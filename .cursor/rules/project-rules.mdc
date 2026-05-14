@@ -1,0 +1,20 @@
+# Aircraft Telemetry Dashboard Rules
+
+- Use Flask app factory pattern
+- Use Blueprints for every module
+- Use SQLAlchemy ORM
+- Use Marshmallow schemas
+- Use JWT authentication
+- Use UUID primary keys
+- Write modular production-grade code
+- Avoid monolithic files
+- Add error handling everywhere
+- Add logging for all APIs
+- Use service-layer architecture
+- Use environment variables
+- Follow REST API conventions
+- Use Socket.IO for realtime updates
+- Use Tailwind CSS on frontend
+- Use React functional components
+- Use Zustand for state management
+- Write scalable folder structures
