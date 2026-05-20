@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from app.extensions import db
+from app.extensions import db,socketio
 from app.models.aircraft import Aircraft
 from app.models.telemetry import Telemetry
 
@@ -56,6 +56,17 @@ def create_telemetry():
 
     db.session.add(telemetry)
     db.session.commit()
+    from datetime import datetime, UTC
+
+    aircraft.last_seen = datetime.now(UTC)
+    aircraft.status = "ONLINE"
+
+    db.session.commit()
+
+    socketio.emit(
+        "telemetry_update",
+        telemetry.to_dict(),
+    )
 
     return (
         jsonify(

@@ -10,5 +10,8 @@ from app.utils.redis_client import RedisExtension
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
-socketio = SocketIO()
+socketio = SocketIO(
+    cors_allowed_origins="*",
+    async_mode="threading",
+)
 redis_ext = RedisExtension()

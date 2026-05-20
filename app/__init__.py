@@ -31,13 +31,16 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(aircraft_bp)
     from app.routes.telemetry_routes import telemetry_bp
     app.register_blueprint(telemetry_bp)
+    from app import socket_events
+    from app.routes.dashboard_routes import dashboard_bp
+    app.register_blueprint(dashboard_bp)
 
     @app.shell_context_processor
     def shell_context():
         from app import models  # noqa: F401
 
         return {"db": db}
-
+    
     return app
 
 

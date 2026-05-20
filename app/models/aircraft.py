@@ -40,9 +40,14 @@ class Aircraft(db.Model):
     )
 
     status = db.Column(
-        db.String(20),
-        nullable=False,
-        default="ACTIVE",
+    db.String(20),
+    nullable=False,
+    default="ONLINE",
+    )
+
+    last_seen = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
     )
 
     created_at = db.Column(
