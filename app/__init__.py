@@ -2,7 +2,7 @@
 
 import os
 
-from flask import Flask, request
+from flask import Flask, app, request
 
 from app.config import CONFIG_MAP
 from app.extensions import db, jwt, migrate, redis_ext, socketio
@@ -27,6 +27,10 @@ def create_app(config_name: str | None = None) -> Flask:
     register_blueprints(app)
     register_error_handlers(app)
     _register_socketio_handlers()
+    from app.routes.aircraft_routes import aircraft_bp
+    app.register_blueprint(aircraft_bp)
+    from app.routes.telemetry_routes import telemetry_bp
+    app.register_blueprint(telemetry_bp)
 
     @app.shell_context_processor
     def shell_context():
