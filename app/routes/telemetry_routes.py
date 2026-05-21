@@ -68,6 +68,45 @@ def create_telemetry():
         telemetry.to_dict(),
     )
 
+    from app.models.alert import Alert
+    alerts_created = []
+
+    # High engine temperature
+    if (
+        telemetry.engine_temperature
+        and telemetry.engine_temperature > 95
+    ):
+        alert = Alert(
+            aircraft_id=aircraft.id,
+            alert_type="ENGINE_OVERHEAT",
+            severity="CRITICAL",
+            message="Engine temperature exceeded safe limit",
+        )
+
+        db.session.add(alert)
+        alerts_created.append(alert)
+
+    # Low fuel
+    if (
+        telemetry.fuel_level is not None
+        and telemetry.fuel_level < 15
+    ):
+        alert = Alert(
+            aircraft_id=aircraft.id,
+            alert_type="LOW_FUEL",
+            severity="WARNING",
+            message="Fuel level critically low",
+        )
+
+        db.session.add(alert)
+        alerts_created.append(alert)
+
+    db.session.commit()
+    for alert in alerts_created:
+        socketio.emit(
+            "alert_created",
+            alert.to_dict(),
+        )
     return (
         jsonify(
             {

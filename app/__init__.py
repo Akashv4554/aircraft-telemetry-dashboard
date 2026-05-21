@@ -8,7 +8,7 @@ from app.config import CONFIG_MAP
 from app.extensions import db, jwt, migrate, redis_ext, socketio
 from app.middleware.errors import register_error_handlers
 from app.utils.logging import configure_logging
-
+from app.models.alert import Alert
 
 def create_app(config_name: str | None = None) -> Flask:
     """Create and configure the Flask application."""
@@ -34,6 +34,8 @@ def create_app(config_name: str | None = None) -> Flask:
     from app import socket_events
     from app.routes.dashboard_routes import dashboard_bp
     app.register_blueprint(dashboard_bp)
+    from app.routes.alert_routes import alert_bp
+    app.register_blueprint(alert_bp)
 
     @app.shell_context_processor
     def shell_context():
