@@ -56,6 +56,36 @@ def create_telemetry():
 
     db.session.add(telemetry)
     db.session.commit()
+
+    alerts = []
+
+    if telemetry.fuel_level is not None and telemetry.fuel_level < 20:
+        alerts.append({
+            "type": "LOW_FUEL",
+            "message": f"Aircraft {telemetry.aircraft_id} fuel level critical",
+            "severity": "warning",
+        })
+
+    if (
+        telemetry.engine_temperature is not None
+        and telemetry.engine_temperature > 100
+    ):
+        alerts.append({
+            "type": "HIGH_ENGINE_TEMP",
+            "message": f"Aircraft {telemetry.aircraft_id} engine overheating",
+            "severity": "danger",
+        })
+
+    if telemetry.speed > 950:
+        alerts.append({
+            "type": "OVERSPEED",
+            "message": f"Aircraft {telemetry.aircraft_id} overspeed detected",
+            "severity": "danger",
+        })
+
+    for alert in alerts:
+        socketio.emit("aircraft_alert", alert)
+
     from datetime import datetime, UTC
 
     aircraft.last_seen = datetime.now(UTC)

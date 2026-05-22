@@ -112,3 +112,24 @@ def delete_aircraft(aircraft_id):
         ),
         200,
     )
+
+@aircraft_bp.route("", methods=["GET"])
+def get_all_aircraft():
+    """
+    Get all aircraft.
+    """
+
+    aircraft = Aircraft.query.all()
+
+    return (
+        jsonify(
+            {
+                "count": len(aircraft),
+                "aircraft": [
+                    item.to_dict()
+                    for item in aircraft
+                ],
+            }
+        ),
+        200,
+    )
