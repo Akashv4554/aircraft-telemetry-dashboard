@@ -8,14 +8,48 @@ import AircraftMap from "../components/AircraftMap";
 import TelemetryChart from "../components/TelemetryChart";
 import AircraftStats from "../components/AircraftStats";
 import AircraftDetails from "../components/AircraftDetails";
+import AircraftSelector from "../components/AircraftSelector";
 
 function Dashboard() {
   const [telemetry, setTelemetry] = useState([]);
-  const [selectedAircraft, setSelectedAircraft] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
+  const [connectionStatus, setConnectionStatus] =
+    useState("Connecting...");
+  const [aircraft, setAircraft] = useState([]);
+  const [selectedAircraft, setSelectedAircraft] =
+    useState(1);
 
+  // Fetch all aircraft
+  const fetchAircraft = async () => {
+    try {
+      const response = await api.get("/aircraft");
+      console.log(response.data);
+
+      setAircraft(response.data.aircraft || []);
+    } catch (error) {
+      console.error("Failed to fetch aircraft:", error);
+
+      toast.error("Failed to load aircraft");
+    }
+  };
+
+  // Fetch telemetry for selected aircraft
+  const fetchTelemetry = async () => {
+    try {
+      const response = await api.get(
+        `/telemetry/history/${selectedAircraft}`
+      );
+
+      setTelemetry(response.data.telemetry || []);
+    } catch (error) {
+      console.error("Failed to fetch telemetry:", error);
+
+      toast.error("Failed to load telemetry data");
+    }
+  };
+
+  // Initial load
   useEffect(() => {
-    fetchTelemetry();
+    fetchAircraft();
 
     socket.on("connect", () => {
       console.log("Connected to Socket.IO server");
@@ -32,8 +66,17 @@ function Dashboard() {
     socket.on("telemetry_update", (data) => {
       console.log("Realtime telemetry:", data);
 
-      setTelemetry((prev) => [data, ...prev].slice(0, 50));
+      // Only update current aircraft feed
+      if (
+        Number(data.aircraft_id) ===
+        Number(selectedAircraft)
+      ) {
+        setTelemetry((prev) =>
+          [data, ...prev].slice(0, 50)
+        );
+      }
 
+      // Fuel alert
       if (
         data.fuel_level !== null &&
         data.fuel_level !== undefined &&
@@ -44,6 +87,7 @@ function Dashboard() {
         );
       }
 
+      // Engine temperature alert
       if (
         data.engine_temperature !== null &&
         data.engine_temperature !== undefined &&
@@ -67,19 +111,14 @@ function Dashboard() {
       socket.off("telemetry_update");
       socket.off("aircraft_alert");
     };
-  }, []);
+  }, [selectedAircraft]);
 
-  const fetchTelemetry = async () => {
-    try {
-      const response = await api.get("/telemetry/history/1");
-
-      setTelemetry(response.data.telemetry || []);
-    } catch (error) {
-      console.error("Failed to fetch telemetry:", error);
-
-      toast.error("Failed to load telemetry data");
+  // Refetch telemetry whenever aircraft changes
+  useEffect(() => {
+    if (selectedAircraft) {
+      fetchTelemetry();
     }
-  };
+  }, [selectedAircraft]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -117,29 +156,43 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Main Container */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {/* Stats Section */}
+
+        {/* Aircraft Selector */}
+        <AircraftSelector
+          aircraft={aircraft}
+          selectedAircraft={selectedAircraft}
+          setSelectedAircraft={setSelectedAircraft}
+        />
+
+        {/* Stats */}
         <AircraftStats telemetry={telemetry} />
 
         {/* Map + Details */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
-          {/* Map */}
+
+          {/* Aircraft Map */}
           <div className="xl:col-span-2">
             <AircraftMap
               telemetry={telemetry}
-              setSelectedAircraft={setSelectedAircraft}
+              setSelectedAircraft={
+                setSelectedAircraft
+              }
             />
           </div>
 
           {/* Aircraft Details */}
           <div>
-            <AircraftDetails aircraft={selectedAircraft} />
+            <AircraftDetails
+              aircraft={selectedAircraft}
+            />
           </div>
         </div>
 
         {/* Charts */}
         <div className="grid md:grid-cols-2 gap-6 mt-8">
+
           <TelemetryChart
             data={telemetry}
             dataKey="altitude"
@@ -165,8 +218,9 @@ function Dashboard() {
           />
         </div>
 
-        {/* Live Telemetry Feed */}
+        {/* Live Feed */}
         <div className="mt-10">
+
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-semibold">
               Live Telemetry Feed
@@ -177,117 +231,117 @@ function Dashboard() {
             </span>
           </div>
 
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {telemetry.map((item) => (
-          <div
-            key={item.id}
-            className="bg-slate-900 border border-slate-700 rounded-xl p-4"
-          >
-
-            <div className="flex items-center justify-between mb-3">
-
-              <h2 className="text-lg font-bold text-cyan-400">
-                Aircraft #{item.aircraft_id}
-              </h2>
-
-              <div
-                className={`
-                  h-3 w-3 rounded-full
-                  ${
-                    item.engine_temperature > 100
-                      ? "bg-red-500"
-                      : item.fuel_level < 15
-                      ? "bg-yellow-400"
-                      : "bg-green-400"
-                  }
-                `}
-              />
-
-            </div>
-
-            <p>Altitude: {item.altitude} ft</p>
-            <p>Speed: {item.speed} km/h</p>
-            <p>Heading: {item.heading}°</p>
-            <p>Fuel Level: {item.fuel_level ?? "N/A"}%</p>
-            <p>Engine Temp: {item.engine_temperature ?? "N/A"}°C</p>
-            <p>Latitude: {item.latitude}</p>
-            <p>Longitude: {item.longitude}</p>
-
-          </div>
-        ))}
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-cyan-400">
-                    Aircraft #{item.aircraft_id}
-                  </h3>
-
-                  <span className="text-xs text-slate-400">
-                    LIVE
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="text-slate-400">
-                      Altitude:
-                    </span>{" "}
-                    {item.altitude} ft
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Speed:
-                    </span>{" "}
-                    {item.speed} km/h
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Heading:
-                    </span>{" "}
-                    {item.heading}°
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Fuel Level:
-                    </span>{" "}
-                    {item.fuel_level ?? "N/A"}%
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Engine Temp:
-                    </span>{" "}
-                    {item.engine_temperature ?? "N/A"}°C
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Latitude:
-                    </span>{" "}
-                    {item.latitude}
-                  </p>
-
-                  <p>
-                    <span className="text-slate-400">
-                      Longitude:
-                    </span>{" "}
-                    {item.longitude}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-slate-700">
-                  <p className="text-xs text-slate-500">
-                    {item.timestamp}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {telemetry.length === 0 && (
+          {telemetry.length === 0 ? (
             <div className="text-center py-20 text-slate-500">
               No telemetry data available
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+              {telemetry.map((item) => (
+                <div
+                  key={item.id}
+                  className="
+                    bg-slate-900
+                    border border-slate-700
+                    rounded-xl
+                    p-4
+                    hover:border-cyan-500
+                    transition
+                  "
+                >
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between mb-4">
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-cyan-400">
+                        Aircraft #{item.aircraft_id}
+                      </h3>
+
+                      <span className="text-xs text-slate-400">
+                        LIVE
+                      </span>
+                    </div>
+
+                    {/* Status Indicator */}
+                    <div
+                      className={`
+                        h-3 w-3 rounded-full
+                        ${
+                          item.engine_temperature > 100
+                            ? "bg-red-500"
+                            : item.fuel_level < 15
+                            ? "bg-yellow-400"
+                            : "bg-green-400"
+                        }
+                      `}
+                    />
+                  </div>
+
+                  {/* Telemetry Data */}
+                  <div className="space-y-2 text-sm">
+
+                    <p>
+                      <span className="text-slate-400">
+                        Altitude:
+                      </span>{" "}
+                      {item.altitude} ft
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Speed:
+                      </span>{" "}
+                      {item.speed} km/h
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Heading:
+                      </span>{" "}
+                      {item.heading}°
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Fuel Level:
+                      </span>{" "}
+                      {item.fuel_level ?? "N/A"}%
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Engine Temp:
+                      </span>{" "}
+                      {item.engine_temperature ??
+                        "N/A"}
+                      °C
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Latitude:
+                      </span>{" "}
+                      {item.latitude}
+                    </p>
+
+                    <p>
+                      <span className="text-slate-400">
+                        Longitude:
+                      </span>{" "}
+                      {item.longitude}
+                    </p>
+                  </div>
+
+                  {/* Timestamp */}
+                  <div className="mt-4 pt-4 border-t border-slate-700">
+                    <p className="text-xs text-slate-500">
+                      {item.timestamp}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
             </div>
           )}
         </div>

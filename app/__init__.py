@@ -9,10 +9,17 @@ from app.extensions import db, jwt, migrate, redis_ext, socketio
 from app.middleware.errors import register_error_handlers
 from app.utils.logging import configure_logging
 from app.models.alert import Alert
+from flask_cors import CORS
 
 def create_app(config_name: str | None = None) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
+
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "*"}},
+        supports_credentials=True,
+    )
 
     resolved = config_name or os.environ.get("FLASK_CONFIG", "development")
     if resolved not in CONFIG_MAP:
